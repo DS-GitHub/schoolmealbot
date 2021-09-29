@@ -42,12 +42,14 @@ async def my_task():
         embed.set_footer(text='Automatic', icon_url="https://cdn.discordapp.com/avatars/793171487372476446/aaa65470ce891079474805a50e502359.webp")
         channel = client.get_channel(channelId)
         await channel.send(embed=embed)
+        print("정기 알림 완료")
     except Exception as e:
         channel = client.get_channel(channelId)
         KST = tz.gettz('Asia/Seoul')
         embed = discord.Embed(title="서비스 장애", description='서비스가 작동하는데 예외가 발생하였습니다.', color=0xe91e63, timestamp=datetime.datetime.now(tz=KST))
         embed.add_field(name='다음 오류코드와 함께 관리자에게 문의하십시오.', value=str(e))
         await channel.send(embed=embed)
+        print("정기 알림 실패")
 
 async def SendMeal(dateinfo, author, channelId, schoolName):
     try:

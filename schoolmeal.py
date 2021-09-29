@@ -6,7 +6,7 @@ from os import getenv
 from dateutil import tz
 
 client=commands.Bot(command_prefix='?')
-neis = neispy.Client(KEY='1902064db00144a4a48a6dca269d7fec', pSize=1)
+neis = neispy.Client(KEY='', pSize=1)
 
 @client.command()
 async def 급식(ctx, school:str='성남중학교', dateinfo:str=''):

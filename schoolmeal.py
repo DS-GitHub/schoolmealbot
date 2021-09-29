@@ -1,12 +1,11 @@
 #-*- coding:utf-8 -*-
 import discord, asyncio, schedule, datetime, threading, time, neispy, random
 from discord.ext import commands, tasks
-from dotenv import load_dotenv
-from os import getenv
+from os import environ
 from dateutil import tz
 
 client=commands.Bot(command_prefix='?')
-neis = neispy.Client(KEY='', pSize=1)
+neis = neispy.Client(KEY=environ.get('APIKEY'), pSize=1)
 
 @client.command()
 async def 급식(ctx, school:str='성남중학교', dateinfo:str=''):
@@ -129,22 +128,14 @@ async def on_command_error(error):
 
 ##연결##
 try:
-    load_dotenv()
-    TOKEN=getenv('TOKEN')
-    client.run(TOKEN)
-    TOKEN=None
+    client.run(environ.get('TOKEN'))
 except discord.LoginFailure:
-    TOKEN=None
     input("잘못된 토큰이 입력되어 로그인에 실패하였습니다.")
 except discord.HTTPException:
-    TOKEN=None
     input("HTTP request 작업에 오류가 발생해 로그인에 실패하였습니다.")
 except NameError:
-    TOKEN=None
     input("토큰변수가 존재하지 않거나 이름이 잘못되었습니다.")
 except AttributeError:
-    TOKEN=None
     input("토큰 처리에 문제가 발생했습니다. 토큰변수 관련하여 손상이 되어있는지 확인해보세요.")
 except Exception as e:
-    TOKEN=None
     input(f"로그인 도중 {e} 오류가 발생했습니다.")

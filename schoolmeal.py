@@ -25,7 +25,7 @@ async def GetMeal(schoolName, dateinfo=''):
 @tasks.loop(hours=24)
 async def my_task():
     dateinfo=''
-    channelId=834260946423513109#834281229716684850
+    channelId=834281229716684850
     schoolName='성남중학교'
     try:
         KST=tz.gettz('Asia/Seoul')

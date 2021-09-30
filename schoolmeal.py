@@ -1,11 +1,43 @@
 #-*- coding:utf-8 -*-
-import discord, asyncio, schedule, datetime, threading, time, neispy, random
+import discord, asyncio, datetime, neispy, random
 from discord.ext import commands, tasks
 from os import environ
 from dateutil import tz
+from itertools import cycle
 
 client=commands.Bot(command_prefix='?')
+client.remove_command('help')
+client.load_extension("jishaku")
 neis = neispy.Client(KEY=environ.get('APIKEY'), pSize=1)
+status = cycle(['버그 제보: Dillot .𝙿#6079', '?도움 으로 명령어를 확인하세요!', '성남중학교 급식 알림봇입니다.'])
+
+@client.command()
+async def 도움(ctx):
+    help = """
+    <> = 필수 요소
+    [] = 선택 요소
+    
+    **?도움**
+    ㄴ 현재 보고 계신 도움말을 보여줍니다.
+
+    **?급식 [학교명] [대상 날짜]**
+    ㄴ 지정된 학교명*(나이스에 등록된 학교이면 초중고대 상관 없이 모두 가능)*과 대상 날짜에 해당하는 급식을 알려줍니다.
+    ㄴ **참고:** 학교명이 없을 경우 `성남중학교`로 자동 지정 되며, 대상 날짜가 없을 경우 현재 날짜로 자동 지정 됩니다.
+    ㄴ **참고:** 대상 날짜를 지정하시려면 꼭 학교명을 입력해 주셔야 합니다.
+    ㄴ **참고:** 학교명 예시: `성남중학교`, 대상 날짜 예시: `20210930`
+    """
+    KST=tz.gettz('Asia/Seoul')
+    embed = discord.Embed(title='성남중급식알림봇 도움말', description=help, timestamp=datetime.datetime.now(tz=KST), color=0xD9FA39)
+    getuseravatar(ctx.author, embed)
+    try:
+        await ctx.author.send(embed=embed)
+        await ctx.message.add_reaction('✅')
+    except:
+        try:
+            await ctx.send(embed=embed)
+            await ctx.message.add_reaction('✅')
+        except:
+            await ctx.message.add_reaction('❎')
 
 @client.command()
 async def 급식(ctx, school:str='성남중학교', dateinfo:str=''):
@@ -107,24 +139,25 @@ def getuseravatar(author, embed):
     embed.set_footer(text=f'{author.display_name}', icon_url=url)
     return embed
 
+@tasks.loop(seconds=10)
+async def change_status():
+    await client.change_presence(activity=discord.Game(next(status)))
+
+@client.event
+async def on_connect():
+    print("연결중")
+    await client.change_presence(activity=discord.Game(name="봇 연결중..."))
+
 @client.event
 async def on_ready():
-    print('준비됨')
+    print('준비중')
+    await client.change_presence(activity=discord.Game(name="봇 작동중..."))
     my_task.start()
+    change_status.start()
+    print('준비 완료')
 
-# @my_task.before_loop
-# async def before_my_task():
-#     hour = 15
-#     minute = 48
-#     await client.wait_until_ready()
-#     now = datetime.datetime.now()
-#     future = datetime.datetime.datetime(now.year, now.month, now.day, hour, minute)
-#     if now.hour >= hour and now.minute > minute:
-#         future += datetime.timedelta(days=1)
-#     await asyncio.sleep((future-now).seconds)
-    
 @client.event
-async def on_command_error(error):
+async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         pass
 
@@ -135,9 +168,7 @@ except discord.LoginFailure:
     input("잘못된 토큰이 입력되어 로그인에 실패하였습니다.")
 except discord.HTTPException:
     input("HTTP request 작업에 오류가 발생해 로그인에 실패하였습니다.")
-except NameError:
-    input("토큰변수가 존재하지 않거나 이름이 잘못되었습니다.")
 except AttributeError:
-    input("토큰 처리에 문제가 발생했습니다. 토큰변수 관련하여 손상이 되어있는지 확인해보세요.")
+    input("토큰 처리에 문제가 발생했습니다. 토큰 관련하여 손상이 되어있는지 확인해보세요.")
 except Exception as e:
     input(f"로그인 도중 {e} 오류가 발생했습니다.")

@@ -2,7 +2,6 @@
 import discord, asyncio, datetime, neispy, random
 from discord.ext import commands, tasks
 from os import environ
-from dateutil import tz
 from itertools import cycle
 
 client=commands.Bot(command_prefix='?')
@@ -10,6 +9,7 @@ client.remove_command('help')
 client.load_extension("jishaku")
 neis = neispy.Client(KEY=environ.get('APIKEY'), pSize=1)
 status = cycle(['버그 제보: Dillot .𝙿#6079', '?도움 으로 명령어를 확인하세요!', '성남중학교 급식 알림봇입니다.'])
+tz = datetime.timezone(datetime.timedelta(hours=9))
 
 @client.command()
 async def 도움(ctx):
@@ -26,8 +26,7 @@ async def 도움(ctx):
     ㄴ **참고:** 대상 날짜를 지정하시려면 꼭 학교명을 입력해 주셔야 합니다.
     ㄴ **참고:** 학교명 예시: `성남중학교`, 대상 날짜 예시: `20210930`
     """
-    KST=tz.gettz('Asia/Seoul')
-    embed = discord.Embed(title='성남중급식알림봇 도움말', description=help, timestamp=datetime.datetime.now(tz=KST), color=0xD9FA39)
+    embed = discord.Embed(title='성남중급식알림봇 도움말', description=help, timestamp=datetime.datetime.now(tz=tz), color=0xD9FA39)
     getuseravatar(ctx.author, embed)
     try:
         await ctx.author.send(embed=embed)
@@ -54,22 +53,26 @@ async def GetMeal(schoolName, dateinfo=''):
         meal = 'INFO-200'
     return meal
 
-@tasks.loop(hours=24)
+when=[datetime.time(8, 20, tzinfo=tz)]
+@tasks.loop(time=when)
 async def my_task():
+    now = datetime.datetime.now(tz=tz)
+    if now.hour != 7 and now.hour != 8 and now.hour != 9 and now.hour != 10 and now.hour != 11 and now.hour != 12:
+        print("체킹시스템 작동. 태스크 엑세스 거부")
+        return
     dateinfo=''
     channelId=834281229716684850
     schoolName='성남중학교'
     try:
-        KST=tz.gettz('Asia/Seoul')
         if not dateinfo:
-            dateinfo = datetime.datetime.now(tz=KST).strftime('%Y%m%d')
+            dateinfo = datetime.datetime.now(tz=tz).strftime('%Y%m%d')
         meals = await GetMeal(schoolName, dateinfo)
         meal = f"**[ 점심 ]**\n{meals}"
-        embed = discord.Embed(title="오늘의 급식", description=meal, timestamp=datetime.datetime.now(tz=KST), color=0xff005d)
+        embed = discord.Embed(title="오늘의 급식", description=meal, timestamp=datetime.datetime.now(tz=tz), color=0xff005d)
         embed.set_author(icon_url='https://open.neis.go.kr/img/np/C0001.png', name='알레르기 정보(클릭)', url='https://pastebin.com/bSvNRWH0')
         if meals == 'INFO-200':
             image = randomimage()
-            embed = discord.Embed(title="오늘의 급식", description='오늘은 급식이 없다구욧', timestamp=datetime.datetime.now(tz=KST), color=0xff005d)
+            embed = discord.Embed(title="오늘의 급식", description='오늘은 급식이 없다구욧', timestamp=datetime.datetime.now(tz=tz), color=0xff005d)
             embed.set_image(url=image)
         embed.set_footer(text='Automatic', icon_url="https://cdn.discordapp.com/avatars/793171487372476446/aaa65470ce891079474805a50e502359.webp")
         channel = client.get_channel(channelId)
@@ -77,35 +80,32 @@ async def my_task():
         print("정기 알림 완료")
     except Exception as e:
         channel = client.get_channel(channelId)
-        KST = tz.gettz('Asia/Seoul')
-        embed = discord.Embed(title="서비스 장애", description='서비스가 작동하는데 예외가 발생하였습니다.', color=0xe91e63, timestamp=datetime.datetime.now(tz=KST))
+        embed = discord.Embed(title="서비스 장애", description='서비스가 작동하는데 예외가 발생하였습니다.', color=0xe91e63, timestamp=datetime.datetime.now(tz=tz))
         embed.add_field(name='다음 오류코드와 함께 관리자에게 문의하십시오.', value=str(e))
         await channel.send(embed=embed)
         print("정기 알림 실패")
 
 async def SendMeal(dateinfo, author, channelId, schoolName):
     try:
-        KST=tz.gettz('Asia/Seoul')
         if not dateinfo:
-            dateinfo = datetime.datetime.now(tz=KST).strftime('%Y%m%d')
+            dateinfo = datetime.datetime.now(tz=tz).strftime('%Y%m%d')
         meals = await GetMeal(schoolName, dateinfo)
         dateyear = dateinfo[0:4]
         datemonth = dateinfo[4:6]
         dateday = dateinfo[6:8]
         meal = f"**[ 점심 ] - {dateyear}년 {datemonth}월 {dateday}일**\n{meals}"
-        embed = discord.Embed(title=f"{schoolName}의 급식", description=meal, timestamp=datetime.datetime.now(tz=KST), color=0xff005d)
+        embed = discord.Embed(title=f"{schoolName}의 급식", description=meal, timestamp=datetime.datetime.now(tz=tz), color=0xff005d)
         embed.set_author(icon_url='https://open.neis.go.kr/img/np/C0001.png', name='알레르기 정보(클릭)', url='https://pastebin.com/bSvNRWH0')
         if meals == 'INFO-200':
             image = randomimage()
-            embed = discord.Embed(title=f"{schoolName}의 급식", description=f'{dateyear}년 {datemonth}월 {dateday}일에는 급식이 존재하지 않다구욧', timestamp=datetime.datetime.now(tz=KST), color=0xff005d)
+            embed = discord.Embed(title=f"{schoolName}의 급식", description=f'{dateyear}년 {datemonth}월 {dateday}일에는 급식이 존재하지 않다구욧', timestamp=datetime.datetime.now(tz=tz), color=0xff005d)
             embed.set_image(url=image)
         embed = getuseravatar(author, embed)
         channel = client.get_channel(channelId)
         await channel.send(embed=embed)
     except Exception as e:
         channel = client.get_channel(channelId)
-        KST = tz.gettz('Asia/Seoul')
-        embed = discord.Embed(title="서비스 장애", description='서비스가 작동하는데 예외가 발생하였습니다.', color=0xe91e63, timestamp=datetime.datetime.now(tz=KST))
+        embed = discord.Embed(title="서비스 장애", description='서비스가 작동하는데 예외가 발생하였습니다.', color=0xe91e63, timestamp=datetime.datetime.now(tz=tz))
         embed.add_field(name='다음 오류코드와 함께 관리자에게 문의하십시오.', value=str(e))
         await channel.send(embed=embed)
 
@@ -165,7 +165,7 @@ async def on_command_error(ctx, error):
 try:
     client.run(environ.get('TOKEN'))
 except discord.LoginFailure:
-    input("잘못된 토큰이 입력되어 로그인에 실패하였습니다.")
+    input("유효하지 않은 토큰이 입력되어 로그인에 실패하였습니다.")
 except discord.HTTPException:
     input("HTTP request 작업에 오류가 발생해 로그인에 실패하였습니다.")
 except AttributeError:

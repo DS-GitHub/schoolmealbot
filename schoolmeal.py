@@ -1,13 +1,13 @@
 #-*- coding:utf-8 -*-
-import discord, asyncio, datetime, neispy, random
+import discord, asyncio, datetime, random
 from discord.ext import commands, tasks
 from os import environ
 from itertools import cycle
+from neispy import Neispy
 
 client=commands.Bot(command_prefix='?')
 client.remove_command('help')
 client.load_extension("jishaku")
-neis = neispy.Client(KEY=environ.get('APIKEY'), pSize=1)
 status = cycle(['버그 제보: Dillot .𝙿#6079', '?도움 으로 명령어를 확인하세요!', '성남중학교 급식 알림봇입니다.'])
 tz = datetime.timezone(datetime.timedelta(hours=9))
 
@@ -43,23 +43,19 @@ async def 급식(ctx, school:str='성남중학교', dateinfo:str=''):
     await SendMeal(channelId=ctx.channel.id, schoolName=school, dateinfo=dateinfo, author=ctx.author)
 
 async def GetMeal(schoolName, dateinfo=''):
-    scinfo = await neis.schoolInfo(SCHUL_NM=schoolName)
-    AE = scinfo[0].ATPT_OFCDC_SC_CODE  # 교육청코드
-    SE = scinfo[0].SD_SCHUL_CODE  # 학교코드
-    try:
-        scmeal = await neis.mealServiceDietInfo(AE, SE, MLSV_YMD=dateinfo)
-        meal = scmeal[0].DDISH_NM.replace("<br/>", "\n")  # 줄바꿈으로 만든뒤 출력
-    except:
-        meal = 'INFO-200'
-    return meal
+    async with Neispy(KEY=environ.get('APIKEY'), pSize=1) as neis:
+        scinfo = await neis.schoolInfo(SCHUL_NM=schoolName)
+        AE = scinfo[0].ATPT_OFCDC_SC_CODE  # 교육청코드
+        SE = scinfo[0].SD_SCHUL_CODE  # 학교코드
+        try:
+            scmeal = await neis.mealServiceDietInfo(AE, SE, MLSV_YMD=dateinfo)
+            meal = scmeal[0].DDISH_NM.replace("<br/>", "\n")  # 줄바꿈으로 만든뒤 출력
+        except:
+            meal = 'INFO-200'
+        return meal
 
-when=[datetime.time(8, 20, tzinfo=tz)]
-@tasks.loop(time=when)
+@tasks.loop(hours=24)
 async def my_task():
-    now = datetime.datetime.now(tz=tz)
-    if now.hour != 7 and now.hour != 8 and now.hour != 9 and now.hour != 10 and now.hour != 11 and now.hour != 12:
-        print("체킹시스템 작동. 태스크 엑세스 거부")
-        return
     dateinfo=''
     channelId=834281229716684850
     schoolName='성남중학교'
@@ -126,13 +122,8 @@ def randomimage():
     return random.choice(r)
 
 def getuseravatar(author, embed):
-    avatar_type='.png'
     if author.avatar != None:
-        if author.avatar.startswith('a_'):
-            avatar_type='.gif'
-        else:
-            pass
-        url=f'https://cdn.discordapp.com/avatars/{author.id}/{author.avatar}{avatar_type}'
+        url=author.avatar
     else:
         discriminator=int(author.discriminator) % 5
         url=f'https://cdn.discordapp.com/embed/avatars/{discriminator}.png'
@@ -143,6 +134,20 @@ def getuseravatar(author, embed):
 async def change_status():
     await client.change_presence(activity=discord.Game(next(status)))
 
+@my_task.before_loop
+async def wait():
+    # this will use the machine's timezone
+    # to use a specific timezone use `.now(timezone)` without `.astimezone()`
+    # timezones can be acquired using any of
+    # `datetime.timezone.utc`
+    # `datetime.timezone(offset_timedelta)`
+    # `pytz.timezone(name)` (third-party package)
+    now = datetime.datetime.now(tz=tz)
+    next_run = now.replace(hour=8, minute=0, second=0)
+    if next_run < now:
+        next_run += datetime.timedelta(days=1)
+    await discord.utils.sleep_until(next_run)
+
 @client.event
 async def on_connect():
     print("연결중")
@@ -150,11 +155,12 @@ async def on_connect():
 
 @client.event
 async def on_ready():
-    print('준비중')
-    await client.change_presence(activity=discord.Game(name="봇 작동중..."))
-    my_task.start()
-    change_status.start()
     print('준비 완료')
+    try:
+        change_status.start()
+        my_task.start()
+    except RuntimeError:
+        print("태스크가 이미 실행중이어서 태스크를 시작할 수 없습니다.")
 
 @client.event
 async def on_command_error(ctx, error):
